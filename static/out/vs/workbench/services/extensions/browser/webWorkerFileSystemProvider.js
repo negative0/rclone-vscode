@@ -61,19 +61,46 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
                     ctime: 0
                 }
             }
-            const res = await fetch('/fileStat' + resource.path);// resource.toString(true)
+            let dirPath = resource.path.substr(4);
+            console.log("FilePath: ", dirPath);
+            let actualPath = "";
+            dirPath = dirPath.split("/");
+            for(let i=0;i<dirPath.length-1;i++) {
+                actualPath += dirPath[i];
+                actualPath += "/";
+            }
+            if(actualPath.charAt(actualPath.length - 1) === "/") actualPath = actualPath.substr(0, actualPath.length-1);
+            console.log("Actual Path", actualPath);
+            const res = await fetch(`http://localhost:5572/operations/list?remote=${actualPath}&fs=local:`, {
+                method: 'POST',
+                mode: "cors",
+                headers: {
+                    // 'Content-Type': 'application/json',
+                    'Authorization': 'Basic Y2hhaXRhbnlhOjEyMzQ='
+                }
+            });
+            // const res = await fetch('/fileStat' + resource.path);// resource.toString(true)
             if (res.status === 200) {
-                const r = await res.json();
-                console.log('stat:', resource.path, r)
-                if (r == null) {
+                const filePath = resource.path.substr(4);
+                const allFiles = await res.json();
+                console.log('stat:', resource.path);
+                const filtered = allFiles.list.filter((ele) => ele.Path === filePath);
+                console.log('statArray:', filtered);
+
+                if (filtered.length === 0) {
                     throw new files_1.FileSystemProviderError(res.statusText, files_1.FileSystemProviderErrorCode.FileNotFound);
                     // throw vscode_1.FileSystemError.FileNotFound(uri);
                     //throw new files_1.FileSystemProviderError(res.statusText, files_1.FileSystemProviderErrorCode.FileNotFound);
                 }
-                return r;
-                // {
+                return {
+                    type: filtered[0].IsDir ? 2 : 1,
+                    size: filtered[0].Size,
+                    mtime: 0,
+                    ctime: 0
+                };
+                // return {
                 //     type: files_1.FileType.File,
-                //     size: 0,
+                //     size: 4096,
                 //     mtime: 0,
                 //     ctime: 0
                 // }
@@ -91,11 +118,26 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
         }
         async readdir(resource) {
             // console.log('FS.readdir', resource.path)
+            const filePath = resource.path.substr(4);
+
             try {
-                const res = await fetch('/readdir' + resource.path);// resource.toString(true)
+                const res = await fetch(`http://localhost:5572/operations/list?remote=${filePath}&fs=local:`, {
+                    method: 'POST',
+                    mode: "cors",
+                    headers: {
+                        // 'Content-Type': 'application/json',
+                        'Authorization': 'Basic Y2hhaXRhbnlhOjEyMzQ='
+                    }
+                });// resource.toString(true)
                 if (res.status === 200) {
                     const r = await res.json();
-                    return r || []
+                    console.log("Status --- ", res, r);
+                    let out = [];
+                    r.list.map(element => {
+                        out.push([element.Name, element.IsDir ? 2 : 1]);
+                        // console.log(out);
+                    });
+                    return out;
                 }
                 throw new files_1.FileSystemProviderError(res.statusText, files_1.FileSystemProviderErrorCode.Unknown);
             }
@@ -116,9 +158,16 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
                 }
             };
             (async () => {
-                // console.log('FS.readFileStream', resource.path);
+                console.log('FS.readFileStream', resource.path);
                 try {
-                    const res = await fetch(resource.toString(true));
+                    const res = await fetch(`http://localhost:5572/[local:]/${resource.path.substr(4)}`,{
+                        method: 'GET',
+                        mode: "cors",
+                        headers: {
+                            // 'Content-Type': 'application/json',
+                            'Authorization': 'Basic Y2hhaXRhbnlhOjEyMzQ='
+                        }
+                    });
                     if (res.status === 200) {
                         const data = new Uint8Array(await res.arrayBuffer());
                         stream.trigger('data', data);
@@ -137,12 +186,16 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
             return stream;
         }
         async mkdir(resource) {
-            // console.log('FS.mkdir', resource.path)
-            await fetch('/mkdir',{
+            console.log('FS.mkdir', resource.path);
+            await fetch('http://localhost:5572/operations/mkdir',{
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Authorization': 'Basic Y2hhaXRhbnlhOjEyMzQ=',
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({
-                    resource,
+                    fs: 'local:',
+                    remote: resource.path.substr(4),
                 })
             })
         }
