@@ -19,6 +19,18 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
         '/fs/.vscode/tasks.json',
         '/fs/.vscode/launch.json',
     ];
+    const AUTH_KEY = "authKey";
+    const IP_ADDRESS_KEY = "ipAddress";
+    const VS_FILE_SYSTEM_KEY = "vsFileSystem";
+
+    const rcloneAuth = 'Basic ' + localStorage.getItem(AUTH_KEY);
+    const ipAddress = localStorage.getItem(IP_ADDRESS_KEY);
+    // const fileSystem = localStorage.getItem(VS_FILE_SYSTEM_KEY) ;
+
+    const params = new URLSearchParams(window.location.search)
+    const fileSystem = params.has('fs') ? params.get('fs') : '';
+    const remoteBasePath = params.has('remote') ? params.get('remote') : '';
+    console.log("fileSystem", fileSystem, ipAddress, rcloneAuth);
 
     class FetchFileSystemProvider {
         constructor() {
@@ -53,7 +65,7 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
                     ctime: 0
                 }
             }
-            if (resource.path == '/fs') {
+            if (resource.path === '/fs') {
                 return {
                     type: files_1.FileType.Directory,
                     size: 0,
@@ -62,7 +74,7 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
                 }
             }
             let dirPath = resource.path.substr(4);
-            console.log("FilePath: ", dirPath);
+            // console.log("FilePath: ", dirPath);
             let actualPath = "";
             dirPath = dirPath.split("/");
             for(let i=0;i<dirPath.length-1;i++) {
@@ -71,17 +83,23 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
             }
             if(actualPath.charAt(actualPath.length - 1) === "/") actualPath = actualPath.substr(0, actualPath.length-1);
             console.log("Actual Path", actualPath);
-            const res = await fetch(`http://localhost:5572/operations/list?remote=${actualPath}&fs=local:`, {
+
+            if(remoteBasePath){
+                actualPath = `${remoteBasePath}${actualPath ? '/' : ''}${actualPath}`;
+            }
+            const res = await fetch(`${ipAddress}operations/list?remote=${actualPath}&fs=${fileSystem}`, {
                 method: 'POST',
                 mode: "cors",
                 headers: {
                     // 'Content-Type': 'application/json',
-                    'Authorization': 'Basic Y2hhaXRhbnlhOjEyMzQ='
+                    'Authorization': rcloneAuth
                 }
             });
             // const res = await fetch('/fileStat' + resource.path);// resource.toString(true)
             if (res.status === 200) {
-                const filePath = resource.path.substr(4);
+                let filePath = resource.path.substr(4);
+                filePath = `${remoteBasePath}${filePath ? '/' : ''}${filePath}`;
+
                 const allFiles = await res.json();
                 console.log('stat:', resource.path);
                 const filtered = allFiles.list.filter((ele) => ele.Path === filePath);
@@ -93,7 +111,7 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
                     //throw new files_1.FileSystemProviderError(res.statusText, files_1.FileSystemProviderErrorCode.FileNotFound);
                 }
                 return {
-                    type: filtered[0].IsDir ? 2 : 1,
+                    type: filtered[0].IsDir ? files_1.FileType.Directory : files_1.FileType.File,
                     size: filtered[0].Size,
                     mtime: 0,
                     ctime: 0
@@ -118,15 +136,17 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
         }
         async readdir(resource) {
             // console.log('FS.readdir', resource.path)
-            const filePath = resource.path.substr(4);
-
+            let actualPath = resource.path.substr(4);
+            if(remoteBasePath){
+                actualPath = `${remoteBasePath}${actualPath ? '/' : ''}${actualPath}`;
+            }
             try {
-                const res = await fetch(`http://localhost:5572/operations/list?remote=${filePath}&fs=local:`, {
+                const res = await fetch(`${ipAddress}operations/list?remote=${actualPath}&fs=${fileSystem}`, {
                     method: 'POST',
                     mode: "cors",
                     headers: {
                         // 'Content-Type': 'application/json',
-                        'Authorization': 'Basic Y2hhaXRhbnlhOjEyMzQ='
+                        'Authorization': rcloneAuth
                     }
                 });// resource.toString(true)
                 if (res.status === 200) {
@@ -134,7 +154,8 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
                     console.log("Status --- ", res, r);
                     let out = [];
                     r.list.map(element => {
-                        out.push([element.Name, element.IsDir ? 2 : 1]);
+                        const isDir = element.IsDir ? files_1.FileType.Directory : files_1.FileType.File;
+                        out.push([element.Name, isDir]);
                         // console.log(out);
                     });
                     return out;
@@ -159,13 +180,18 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
             };
             (async () => {
                 console.log('FS.readFileStream', resource.path);
+                let actualPath = resource.path.substr(4);
+                if(remoteBasePath){
+                    actualPath = `${remoteBasePath}${actualPath ? '/' : ''}${actualPath}`;
+                }
+
                 try {
-                    const res = await fetch(`http://localhost:5572/[local:]/${resource.path.substr(4)}`,{
+                    const res = await fetch(`${ipAddress}[${fileSystem}]/${actualPath}`,{
                         method: 'GET',
                         mode: "cors",
                         headers: {
                             // 'Content-Type': 'application/json',
-                            'Authorization': 'Basic Y2hhaXRhbnlhOjEyMzQ='
+                            'Authorization': rcloneAuth
                         }
                     });
                     if (res.status === 200) {
@@ -187,15 +213,18 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
         }
         async mkdir(resource) {
             console.log('FS.mkdir', resource.path);
-            await fetch('http://localhost:5572/operations/mkdir',{
+            let actualPath = resource.path.substr(4);
+            actualPath = `${remoteBasePath}${actualPath ? '/' : ''}${actualPath}`;
+
+            await fetch(`${ipAddress}operations/mkdir`,{
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Basic Y2hhaXRhbnlhOjEyMzQ=',
+                    'Authorization': rcloneAuth,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    fs: 'local:',
-                    remote: resource.path.substr(4),
+                    fs: `${fileSystem}`,
+                    remote: actualPath,
                 })
             })
         }
@@ -230,32 +259,60 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
             return id;
         }
         async write(id, a, content, b, c) {
-            // console.log('FS.write', id, a, content, b, c)
+            let file = this.openFiles[id];
+            const filePath = file.resource.path.substr(4);
+
+            let formData = new FormData();
+            const filePathSplits = filePath.split("/");
+            formData.append('file', new Blob([content.buffer], {type:'text/plain'}), filePathSplits[filePathSplits.length-1]);
+
             this.openFiles[id].written = true;
-            await fetch('/writefile/', {
+            let actualPath = "";
+            for(let i=0;i<filePathSplits.length-1;i++) {
+                actualPath += filePathSplits[i];
+                actualPath += "/";
+            }
+            // if(actualPath.charAt(actualPath.length - 1) === "/") actualPath = actualPath.substr(0, actualPath.length-1);
+            console.log("Actual Path", actualPath);
+            if(remoteBasePath){
+                actualPath = `${remoteBasePath}${actualPath ? '/' : ''}${actualPath}`;
+            }
+            await fetch(`${ipAddress}operations/uploadfile?remote=${actualPath}&fs=${fileSystem}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Authorization': rcloneAuth,
                 },
-                body: JSON.stringify({
-                    ... this.openFiles[id],
-                    content: new TextDecoder("utf-8").decode(content)
-                })
+                body: formData
             });
             // console.log('FS.write',...args)
         }
         async close(id) {
             // console.log('FS.close', id, this.openFiles[id])
             if (!this.openFiles[id].written) {
-                await fetch('/writefile/', {
+                let file = this.openFiles[id];
+                const filePath = file.resource.path.substr(4);
+
+                let formData = new FormData();
+                const filePathSplits = filePath.split("/");
+                formData.append('file', new Blob([content.buffer], {type:'text/plain'}), filePathSplits[filePathSplits.length-1]);
+
+                this.openFiles[id].written = true;
+                let actualPath = "";
+                for(let i=0;i<filePathSplits.length-1;i++) {
+                    actualPath += filePathSplits[i];
+                    actualPath += "/";
+                }
+                // if(actualPath.charAt(actualPath.length - 1) === "/") actualPath = actualPath.substr(0, actualPath.length-1);
+                console.log("Actual Path", actualPath);
+                if(remoteBasePath){
+                    actualPath = `${remoteBasePath}${actualPath ? '/' : ''}${actualPath}`;
+                }
+                await fetch(`${ipAddress}operations/uploadfile?remote=${actualPath}&fs=${fileSystem}`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Authorization': rcloneAuth,
                     },
-                    body: JSON.stringify({
-                        ... this.openFiles[id],
-                        content: ''
-                    })
+                    body: formData
                 });
             }
             delete this.openFiles[id];
