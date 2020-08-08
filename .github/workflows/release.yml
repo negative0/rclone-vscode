@@ -22,15 +22,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Zip build
         run: |
-          zip -r currentbuild.zip build
-      - name: Deploy to gh-pages
-        if: success()
-        uses: crazy-max/ghaction-github-pages@v1
-        with:
-          target_branch: gh-pages
-          build_dir: build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          zip -r currentbuild.zip src
 
       - name: Create Release
         id: create_release
