@@ -22,7 +22,8 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Zip build
         run: |
-          zip -r currentbuild.zip src
+          cp  -r src build
+          zip -r currentbuild.zip build
 
       - name: Create Release
         id: create_release
