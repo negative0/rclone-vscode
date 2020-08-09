@@ -74,6 +74,9 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
                 }
             }
             let dirPath = resource.path.substr(4);
+            if(remoteBasePath){
+                dirPath = `${remoteBasePath}${dirPath ? '/' : ''}${dirPath}`;
+            }
             // console.log("FilePath: ", dirPath);
             let actualPath = "";
             dirPath = dirPath.split("/");
@@ -84,9 +87,7 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
             if(actualPath.charAt(actualPath.length - 1) === "/") actualPath = actualPath.substr(0, actualPath.length-1);
             console.log("Actual Path", actualPath);
 
-            if(remoteBasePath){
-                actualPath = `${remoteBasePath}${actualPath ? '/' : ''}${actualPath}`;
-            }
+
             const res = await fetch(`${ipAddress}operations/list?remote=${actualPath}&fs=${fileSystem}`, {
                 method: 'POST',
                 mode: "cors",
@@ -98,7 +99,8 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
             // const res = await fetch('/fileStat' + resource.path);// resource.toString(true)
             if (res.status === 200) {
                 let filePath = resource.path.substr(4);
-                filePath = `${remoteBasePath}${filePath ? '/' : ''}${filePath}`;
+                if(remoteBasePath)
+                    filePath = `${remoteBasePath}${filePath ? '/' : ''}${filePath}`;
 
                 const allFiles = await res.json();
                 console.log('stat:', resource.path);
@@ -137,9 +139,12 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
         async readdir(resource) {
             // console.log('FS.readdir', resource.path)
             let actualPath = resource.path.substr(4);
+            console.log("actual path:", actualPath);
             if(remoteBasePath){
                 actualPath = `${remoteBasePath}${actualPath ? '/' : ''}${actualPath}`;
             }
+            console.log("actual path:", actualPath);
+
             try {
                 const res = await fetch(`${ipAddress}operations/list?remote=${actualPath}&fs=${fileSystem}`, {
                     method: 'POST',
