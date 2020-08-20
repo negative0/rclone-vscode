@@ -234,25 +234,34 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
             })
         }
         async delete(resource, opts) {
-            await fetch('/deletefile', {
-                method: 'delete',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    resource, opts
+            let actualPath = resource.path.substr(4);
+            actualPath = `${remoteBasePath}${actualPath ? '/' : ''}${actualPath}`;
+            console.log("Delete File", resource, opts);
+
+            // use rclone deletefile to delete the file
+            await fetch(`${ipAddress}operations/purge`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': rcloneAuth,
+                    'Content-Type': 'application/json'
+                }, body: JSON.stringify({
+                    fs: `${fileSystem}`,
+                    remote: actualPath
                 })
             })
             return;
         }
         async rename(from, to, opts) {
             // console.log('FS.rename', from, to)
-            await fetch('/rename', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    from, to, opts
-                })
-            });
-            // throw new errors_1.NotImplementedError();
+
+            // await fetch('/rename', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({
+            //         from, to, opts
+            //     })
+            // });
+            throw new errors_1.NotImplementedError();
         }
         async open(resource, mode) {
             var id = this.nextId++;
