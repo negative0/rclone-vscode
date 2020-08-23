@@ -27,10 +27,22 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
     const ipAddress = localStorage.getItem(IP_ADDRESS_KEY);
     // const fileSystem = localStorage.getItem(VS_FILE_SYSTEM_KEY) ;
 
+    const filePathRegex = /^(.*)\[(.*?)\](.*)$/;
+
     const params = new URLSearchParams(window.location.search)
-    const fileSystem = params.has('fs') ? params.get('fs') : '';
-    const remoteBasePath = params.has('remote') ? params.get('remote') : '';
+
+    const downloadUrl = params.has('downloadUrl') ? params.get('downloadUrl'): '';
+    console.log("Download URL", downloadUrl)
+    const urlSplits = downloadUrl.match(filePathRegex)
+    console.log("Url splits", urlSplits);
+
+    const fileSystem = urlSplits && urlSplits.length > 1 ? urlSplits[2] : '';
+    let remoteBasePath = urlSplits && urlSplits.length > 1  ? urlSplits[3] : '';
+    if(remoteBasePath === "/") remoteBasePath = "";
+    console.log(fileSystem, remoteBasePath);
+
     console.log("fileSystem", fileSystem, ipAddress, rcloneAuth);
+
 
     class FetchFileSystemProvider {
         constructor() {
@@ -77,7 +89,6 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
             if(remoteBasePath){
                 dirPath = `${remoteBasePath}${dirPath ? '/' : ''}${dirPath}`;
             }
-            // console.log("FilePath: ", dirPath);
             let actualPath = "";
             dirPath = dirPath.split("/");
             for(let i=0;i<dirPath.length-1;i++) {
@@ -118,12 +129,7 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
                     mtime: 0,
                     ctime: 0
                 };
-                // return {
-                //     type: files_1.FileType.File,
-                //     size: 4096,
-                //     mtime: 0,
-                //     ctime: 0
-                // }
+
             }
             throw new files_1.FileSystemProviderError(res.statusText, files_1.FileSystemProviderErrorCode.Unknown);
         }
