@@ -1,13 +1,14 @@
 {
   "name": "rclone-vscode",
   "author": "negative0",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": false,
   "rclone": {
     "handlesType": [
       "rclone/dir"
     ],
-    "pluginType": "FILE_HANDLER"
+    "pluginType": "FILE_HANDLER",
+    "redirectReferrer": true
   },
   "scripts": {
   },
