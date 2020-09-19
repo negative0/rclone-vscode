@@ -31,7 +31,7 @@ define(["require", "exports", "vs/platform/files/common/files", "vs/base/common/
 
     const params = new URLSearchParams(window.location.search)
 
-    const downloadUrl = params.has('downloadUrl') ? params.get('downloadUrl'): '';
+    const downloadUrl = params.has('loadUrl') ? params.get('loadUrl`'): '';
     console.log("Download URL", downloadUrl)
     const urlSplits = downloadUrl.match(filePathRegex)
     console.log("Url splits", urlSplits);
